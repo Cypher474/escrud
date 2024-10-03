@@ -46,6 +46,12 @@ class FileDeleteRequest(BaseModel):
 class VectorStoreRequest(BaseModel):
     vector_store_id: str
 
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+
 @app.get("/assistants/")
 async def list_assistants():
     try:
