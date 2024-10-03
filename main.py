@@ -190,6 +190,9 @@ async def delete_file(file_id: str = Query(..., description="The ID of the file 
 @app.post("/vector-store/upload/")
 async def upload_files_to_vector_store(
     vector_store_id: str = Form(..., description="ID of the vector store"),
+    vector_store_name: str = Form(..., description="Name of the vector store"),
+    assistant_id: str = Form(..., description="ID of the assistant"),
+    assistant_name: str = Form(..., description="Name of the assistant"),
     files: List[UploadFile] = File(..., description="Multiple files to upload")
 ):
     if not files:
@@ -205,7 +208,7 @@ async def upload_files_to_vector_store(
         for file in files:
             # Check if file with the same name already exists
             if file.filename in existing_filenames:
-                raise HTTPException(status_code=400, detail=f"File '{file.filename}' already exists in the vector store")
+                raise HTTPException(status_code=400, detail=f"File '{file.filename}' already exists in the vector store '{vector_store_name}'  ")
 
             # Read file content
             file_content = await file.read()
@@ -234,16 +237,26 @@ async def upload_files_to_vector_store(
                     "filename": file_data.filename
                 })
 
+        # Update the assistant with the new vector store
+        assistant = client.beta.assistants.update(
+            assistant_id=assistant_id,
+            tool_resources={"file_search": {"vector_store_ids": [vector_store_id]}},
+        )
+
         # Return the status, file counts of the batch, and request information
         return {
             "request_info": {
                 "vector_store_id": vector_store_id,
+                "vector_store_name": vector_store_name,
+                "assistant_id": assistant_id,
+                "assistant_name": assistant_name,
                 "uploaded_files": uploaded_filenames
             },
             "response": {
                 "status": file_batch.status,
                 "file_counts": file_batch.file_counts,
-                "uploaded_files_info": uploaded_files_info
+                "uploaded_files_info": uploaded_files_info,
+                "assistant_update": f"The vector store '{vector_store_name}' of Assistant '{assistant_name}' has been updated."
             }
         }
     except HTTPException as he:
